@@ -66,3 +66,10 @@ window.addEventListener("load", () => {
 2. Open demo phishing pages (local or controlled environment) with forms mimicking Instagram, Gmail, or Facebook.
 3. Check that warning modals appear for suspicious forms.
 4. Open legitimate login pages (Instagram, Gmail) to verify that the extension does not falsely flag them.
+
+### Test Results
+
+![Test-Site Detection](./screenshots/Result1.png)
+
+
+
