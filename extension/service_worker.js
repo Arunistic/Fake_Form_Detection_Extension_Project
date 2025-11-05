@@ -25,13 +25,35 @@ async function loadConfig() {
 // Initialize on startup
 loadConfig();
 
+// Cache for Safe Browsing results to avoid repeated API calls
+const safeBrowsingCache = new Map();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+// Track consecutive failures to auto-disable after repeated errors
+let consecutiveFailures = 0;
+const MAX_FAILURES = 3; // Disable after 3 consecutive failures
+let safeBrowsingDisabled = false;
+
 /**
  * Check URL against Google Safe Browsing API
  * NOTE: For production, use a backend proxy to keep API key secure
  */
 async function checkSafeBrowsing(url) {
+  // Check if Safe Browsing is disabled due to repeated failures
+  if (safeBrowsingDisabled) {
+    return { safe: 'unknown', reason: 'Safe Browsing disabled due to repeated API errors' };
+  }
+  
   if (!CONFIG.USE_SAFE_BROWSING || !CONFIG.SAFE_BROWSING_API_KEY || CONFIG.SAFE_BROWSING_API_KEY === 'YOUR_API_KEY_HERE') {
     return { safe: 'unknown', reason: 'API key not configured' };
+  }
+  
+  // Check cache first
+  const cacheKey = url;
+  const cached = safeBrowsingCache.get(cacheKey);
+  if (cached && (Date.now() - cached.timestamp) < CACHE_DURATION) {
+    console.log('[FFD] Using cached Safe Browsing result for:', url);
+    return cached.result;
   }
 
   try {
@@ -54,6 +76,7 @@ async function checkSafeBrowsing(url) {
     try {
       const urlObj = new URL(url);
       validUrl = urlObj.href; // Use normalized URL
+      finalCacheKey = validUrl; // Use normalized URL as cache key
     } catch (e) {
       // Invalid URL format
       return { safe: 'unknown', reason: `Invalid URL format: ${e.message}` };
@@ -133,28 +156,73 @@ async function checkSafeBrowsing(url) {
     // Check if threats were found
     if (data.matches && data.matches.length > 0) {
       const threats = data.matches.map(m => m.threatType).join(', ');
-      return {
+      const result = {
         safe: false,
         threats: data.matches,
         threatTypes: threats,
         reason: `URL flagged by Google Safe Browsing: ${threats}`
       };
+      
+      // Cache successful result
+      safeBrowsingCache.set(finalCacheKey, { result, timestamp: Date.now() });
+      consecutiveFailures = 0; // Reset failure counter on success
+      
+      return result;
     }
 
-    return { safe: true, reason: 'No threats found' };
+    const result = { safe: true, reason: 'No threats found' };
+    
+    // Cache successful result
+    safeBrowsingCache.set(finalCacheKey, { result, timestamp: Date.now() });
+    consecutiveFailures = 0; // Reset failure counter on success
+    
+    return result;
   } catch (error) {
-    console.error('[FFD] Safe Browsing check failed:', error);
+    // Track consecutive failures
+    consecutiveFailures++;
+    
+    // Only log error once per failure type to avoid spam
+    if (consecutiveFailures === 1 || consecutiveFailures === MAX_FAILURES) {
+      if (error.message.includes('403')) {
+        console.error('[FFD] Safe Browsing API error 403 (Forbidden).', 
+          consecutiveFailures === MAX_FAILURES ? 
+          'Disabling Safe Browsing due to repeated failures. Set USE_SAFE_BROWSING: false in config.js to disable permanently.' :
+          'Check your API key configuration. See SAFE_BROWSING_SETUP.md for help.');
+      } else {
+        console.error('[FFD] Safe Browsing check failed:', error.message);
+      }
+    }
+    
+    // Auto-disable after MAX_FAILURES consecutive failures
+    if (consecutiveFailures >= MAX_FAILURES) {
+      safeBrowsingDisabled = true;
+      console.warn('[FFD] Safe Browsing disabled due to', MAX_FAILURES, 'consecutive failures. To re-enable, fix API key and reload extension.');
+      
+      // Cache the failure to avoid repeated attempts
+      const result = { 
+        safe: 'unknown', 
+        reason: 'Safe Browsing API unavailable (disabled due to repeated errors)',
+        disabled: true
+      };
+      safeBrowsingCache.set(finalCacheKey, { result, timestamp: Date.now() });
+      
+      return result;
+    }
     
     // Provide user-friendly error messages
     let reason = 'Check failed: ' + error.message;
     
     if (error.message.includes('403')) {
-      reason = 'Safe Browsing API key issue. Please check: 1) API key is correct, 2) Safe Browsing API is enabled in Google Cloud Console, 3) Quota not exceeded.';
+      reason = 'Safe Browsing API key issue. Please check API key configuration.';
     } else if (error.message.includes('Invalid URL')) {
       reason = 'Cannot check URL - invalid format.';
     }
     
-    return { safe: 'unknown', reason: reason };
+    // Cache the failure (short duration) to avoid repeated immediate attempts
+    const result = { safe: 'unknown', reason: reason };
+    safeBrowsingCache.set(finalCacheKey, { result, timestamp: Date.now() - (CACHE_DURATION - 30000) }); // Cache for 30 seconds only
+    
+    return result;
   }
 }
 
@@ -210,7 +278,24 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       case 'UPDATE_CONFIG': {
         CONFIG = { ...CONFIG, ...payload };
         await chrome.storage.local.set({ ffd_config: CONFIG });
+        
+        // Reset Safe Browsing if config was updated
+        if (payload.USE_SAFE_BROWSING === false) {
+          safeBrowsingDisabled = false;
+          consecutiveFailures = 0;
+          safeBrowsingCache.clear();
+        }
+        
         sendResponse({ type: 'CONFIG_UPDATED', payload: { success: true } });
+        break;
+      }
+      
+      case 'RESET_SAFE_BROWSING': {
+        // Allow manual reset of Safe Browsing
+        safeBrowsingDisabled = false;
+        consecutiveFailures = 0;
+        safeBrowsingCache.clear();
+        sendResponse({ type: 'SAFE_BROWSING_RESET', payload: { success: true } });
         break;
       }
 
