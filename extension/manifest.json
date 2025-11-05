@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Fake Form Detection (Course Project)",
-  "version": "0.1.0",
-  "description": "Detects suspicious login forms (Instagram/Gmail/Facebook lookalikes) and warns users before submission.",
+  "name": "Fake Form Detection (Enhanced)",
+  "version": "1.0.0",
+  "description": "Advanced phishing form detection with ML, Safe Browsing API, blacklist system, and JavaScript interception.",
   "permissions": [
     "storage",
     "scripting",
@@ -17,7 +17,13 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["utils.js", "content_script.js"],
+      "js": [
+        "config.js",
+        "utils.js",
+        "blacklist.js",
+        "ml-detector.js",
+        "content_script.js"
+      ],
       "run_at": "document_idle"
     }
   ]

